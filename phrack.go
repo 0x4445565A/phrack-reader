@@ -33,39 +33,53 @@ type Phracked struct {
   url        string
   tempPrefix string
   temp       string
-  articleLen int
+  pages int
   tgz        *os.File
   filePath   string
 }
 
 var phracked = new(Phracked)
 
-func (phracked *Phracked) cleanPhracked() {
-	if phracked.temp != "" {
-		phracked.tgz.Close()
-		os.RemoveAll(phracked.temp)
+func (p *Phracked) cleanPhracked() {
+	if p.temp != "" {
+		p.tgz.Close()
+		os.RemoveAll(p.temp)
 	}
 }
 
-func (phracked *Phracked) initPhracked(issue string) {
-	phracked.cleanPhracked()
+func (p *Phracked) initPhracked(issue string) {
+	p.cleanPhracked()
 	// Configure the phracked struct
 	var err error
-	phracked.ch = make(chan HttpResponse, 1)
-	phracked.statusCh = make(chan string, 1)
-	phracked.issue = issue
-	phracked.url = "http://www.phrack.org/archives/tgz/phrack" + phracked.issue + ".tar.gz"
-	phracked.tempPrefix = "issue-" + phracked.issue + "-"
-	phracked.temp, err = ioutil.TempDir("", phracked.tempPrefix)
+	p.ch = make(chan HttpResponse, 1)
+	p.statusCh = make(chan string, 1)
+	p.issue = issue
+	p.url = "http://www.phrack.org/archives/tgz/phrack" + p.issue + ".tar.gz"
+	p.tempPrefix = "issue-" + p.issue + "-"
+	p.temp, err = ioutil.TempDir("", p.tempPrefix)
 	if err != nil {
 		log.Fatal(err)
 	}
-	phracked.filePath = phracked.temp + "/" + phracked.issue + ".tar.gz"
-	phracked.tgz, err = os.Create(phracked.filePath)
+	p.filePath = p.temp + "/" + p.issue + ".tar.gz"
+	p.tgz, err = os.Create(p.filePath)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
+
+func (p *Phracked) countPages(g *gocui.Gui) {
+  files, err := ioutil.ReadDir(p.temp)
+  if err != nil {
+    log.Fatal(err)
+  }
+  p.pages = 0
+  for _, file := range files {
+    if strings.HasSuffix(file.Name(), ".txt") {
+      p.pages++
+    }
+  }
+}
+
 
 
 func init() {
@@ -331,7 +345,7 @@ func initSide(g *gocui.Gui) {
 	}
 	v.Clear()
 	fmt.Fprintf(v, "%s\n", "load")
-	for i := 1; i <= phracked.articleLen; i++ {
+	for i := 1; i <= phracked.pages; i++ {
 		fmt.Fprintf(v, "%s\n", strconv.Itoa(i))
 	}
 	updateMainFile(g, "1.txt")
@@ -354,19 +368,6 @@ func updateMainFile(g *gocui.Gui, path string) {
 		fmt.Fprintf(mainView, "%s", b)
 		if err := g.SetCurrentView("main"); err != nil {
 			log.Fatal(err)
-		}
-	}
-}
-
-func grabPhrackArticles(g *gocui.Gui) {
-	files, err := ioutil.ReadDir(phracked.temp)
-	if err != nil {
-		log.Fatal(err)
-	}
-	phracked.articleLen = 0
-	for _, file := range files {
-		if strings.HasSuffix(file.Name(), ".txt") {
-			phracked.articleLen++
 		}
 	}
 }
@@ -397,7 +398,7 @@ func grabUrl(g *gocui.Gui) HttpResponse {
 		}
 		phracked.statusCh <- "Issue unpacked\n"
 		phracked.statusCh <- "Building UI\n"
-		grabPhrackArticles(g)
+		phracked.countPages(g)
 		initSide(g)
 		phracked.ch <- HttpResponse{phracked.url, resp, err}
 	}(g)
