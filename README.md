@@ -16,3 +16,5 @@ The UI is simple.  It has three sections, the pager, body, and status.
 To toggle between pager and body you use tab.
 To move it is just arrow keys.
 To load a different issue highlight "load" in the pager and type in your issue number (then hit enter).  It's all dead simple.
+
+![Reading the most recent issue](http://i.imgur.com/i6GCwzH.png)

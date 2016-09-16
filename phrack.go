@@ -131,7 +131,7 @@ func updateStatus(g *gocui.Gui, status string) {
 
 func layout(g *gocui.Gui) error {
 	maxX, maxY := g.Size()
-	if v, err := g.SetView("side", 0, 0, int(math.Abs(float64(maxX-85))), maxY-5); err != nil {
+	if v, err := g.SetView("side", 0, 0, int(math.Abs(float64(maxX-86))), maxY-5); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
@@ -140,7 +140,7 @@ func layout(g *gocui.Gui) error {
 		fmt.Fprintf(v, "%s\n", "Loading...")
 	}
 
-	if v, err := g.SetView("main", maxX-85, 0, maxX-1, maxY-5); err != nil {
+	if v, err := g.SetView("main", maxX-86, 0, maxX-2, maxY-5); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
