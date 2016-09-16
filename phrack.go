@@ -81,6 +81,41 @@ func (p *Phracked) countPages() {
   }
 }
 
+/**
+ * Completely processes an issue.
+ */
+func (p *Phracked) load() {
+  defer phracked.wg.Done()
+  clearStatus()
+  updateTitle("Phrack Issue #" + phracked.issue)
+  go func() {
+    fetchIssue()
+    writeToFile()
+    unpack()
+    buildUI()
+    phracked.status <- "done"
+  }()
+
+  for {
+    select {
+    case status := <-phracked.status:
+      if status == "done" {
+        return
+      }
+      g.Execute(func(g *gocui.Gui) error {
+        updateStatus(status)
+        return nil
+      })
+    case <-time.After(1000 * time.Millisecond):
+      g.Execute(func(g *gocui.Gui) error {
+        updateStatus(".")
+        return nil
+      })
+    }
+  }
+}
+
+
 
 /**
  *  Figure out what issue to start with.
@@ -113,7 +148,7 @@ func main() {
 
 	defer phracked.cleanPhracked()
 	phracked.wg.Add(1)
-	go grabUrl()
+	go phracked.load()
 
 	if err := g.MainLoop(); err != nil && err != gocui.ErrQuit {
 		log.Panicln(err)
@@ -276,7 +311,7 @@ func loadIssue(g *gocui.Gui, v *gocui.View) error {
 	}
 	phracked.initPhracked(safer)
 	phracked.wg.Add(1)
-	go grabUrl()
+	go phracked.load()
 	return nil
 }
 
@@ -443,38 +478,4 @@ func buildUI() {
     phracked.status <- "Building UI\n"
     phracked.countPages()
     initSide()
-}
-
-/**
- * Completely processes an issue.
- */
-func grabUrl() {
-	defer phracked.wg.Done()
-	clearStatus()
-	updateTitle("Phrack Issue #" + phracked.issue)
-	go func() {
-		fetchIssue()
-    writeToFile()
-    unpack()
-    buildUI()
-		phracked.status <- "done"
-	}()
-
-	for {
-		select {
-		case status := <-phracked.status:
-      if status == "done" {
-        return
-      }
-			g.Execute(func(g *gocui.Gui) error {
-				updateStatus(status)
-				return nil
-			})
-		case <-time.After(1000 * time.Millisecond):
-			g.Execute(func(g *gocui.Gui) error {
-				updateStatus(".")
-				return nil
-			})
-		}
-	}
 }
