@@ -18,18 +18,6 @@ import (
 	"time"
 )
 
-var phracked struct {
-	wg         sync.WaitGroup
-	ch         chan HttpResponse
-	statusCh   chan string
-	issue      string
-	url        string
-	tempPrefix string
-	temp       string
-	articleLen int
-	tgz        *os.File
-	filePath   string
-}
 
 type HttpResponse struct {
 	url      string
@@ -37,15 +25,30 @@ type HttpResponse struct {
 	err      error
 }
 
-func cleanPhracked() {
+type Phracked struct {
+  wg         sync.WaitGroup
+  ch         chan HttpResponse
+  statusCh   chan string
+  issue      string
+  url        string
+  tempPrefix string
+  temp       string
+  articleLen int
+  tgz        *os.File
+  filePath   string
+}
+
+var phracked = new(Phracked)
+
+func (phracked *Phracked) cleanPhracked() {
 	if phracked.temp != "" {
 		phracked.tgz.Close()
 		os.RemoveAll(phracked.temp)
 	}
 }
 
-func initPhracked(issue string) {
-	cleanPhracked()
+func (phracked *Phracked) initPhracked(issue string) {
+	phracked.cleanPhracked()
 	// Configure the phracked struct
 	var err error
 	phracked.ch = make(chan HttpResponse, 1)
@@ -64,12 +67,13 @@ func initPhracked(issue string) {
 	}
 }
 
+
 func init() {
 	issue := "1"
 	if len(os.Args) > 1 {
 		issue = os.Args[1]
 	}
-	initPhracked(issue)
+	phracked.initPhracked(issue)
 }
 
 func main() {
@@ -84,7 +88,7 @@ func main() {
 		log.Panicln(err)
 	}
 
-	defer cleanPhracked()
+	defer phracked.cleanPhracked()
 	phracked.wg.Add(1)
 	go grabUrl(g)
 
@@ -239,7 +243,7 @@ func loadIssue(g *gocui.Gui, v *gocui.View) error {
 	if err := g.SetCurrentView("main"); err != nil {
 		return err
 	}
-	initPhracked(safer)
+	phracked.initPhracked(safer)
 	phracked.wg.Add(1)
 	go grabUrl(g)
 	return nil
@@ -375,20 +379,20 @@ func grabUrl(g *gocui.Gui) HttpResponse {
 		phracked.statusCh <- "Fetching " + phracked.url + "..."
 		resp, err := http.Get(phracked.url)
 		if err != nil {
-			cleanPhracked()
+			phracked.cleanPhracked()
 			log.Fatal(err)
 		}
 		phracked.statusCh <- "\nDownload Complete...\n"
 		_, err = io.Copy(phracked.tgz, resp.Body)
 		phracked.statusCh <- "Wrote to " + phracked.filePath + "\n"
 		if err != nil {
-			cleanPhracked()
+			phracked.cleanPhracked()
 			log.Fatal(err)
 		}
 		phracked.statusCh <- "Unpacking tar.gz..."
 		err = untar(phracked.filePath, phracked.temp)
 		if err != nil {
-			cleanPhracked()
+			phracked.cleanPhracked()
 			log.Fatal(err)
 		}
 		phracked.statusCh <- "Issue unpacked\n"
