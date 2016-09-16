@@ -18,16 +18,8 @@ import (
 	"time"
 )
 
-
-type HttpResponse struct {
-	url      string
-	response *http.Response
-	err      error
-}
-
 type Phracked struct {
   wg         sync.WaitGroup
-  ch         chan HttpResponse
   statusCh   chan string
   issue      string
   url        string
@@ -49,9 +41,7 @@ func (p *Phracked) cleanPhracked() {
 
 func (p *Phracked) initPhracked(issue string) {
 	p.cleanPhracked()
-	// Configure the phracked struct
 	var err error
-	p.ch = make(chan HttpResponse, 1)
 	p.statusCh = make(chan string, 1)
 	p.issue = issue
 	p.url = "http://www.phrack.org/archives/tgz/phrack" + p.issue + ".tar.gz"
@@ -295,8 +285,7 @@ func keybindings(g *gocui.Gui) error {
 }
 
 func quit(g *gocui.Gui, v *gocui.View) error {
-	phracked.statusCh <- "QUITTING"
-	phracked.ch <- HttpResponse{}
+	phracked.statusCh <- "done"
 	return gocui.ErrQuit
 }
 
@@ -372,10 +361,10 @@ func updateMainFile(g *gocui.Gui, path string) {
 	}
 }
 
-func grabUrl(g *gocui.Gui) HttpResponse {
+func grabUrl(g *gocui.Gui) {
 	defer phracked.wg.Done()
 	clearStatus(g)
-	updateTitle(g, "Phrack Issue #"+phracked.issue)
+	updateTitle(g, "Phrack Issue #" + phracked.issue)
 	go func(g *gocui.Gui) {
 		phracked.statusCh <- "Fetching " + phracked.url + "..."
 		resp, err := http.Get(phracked.url)
@@ -400,19 +389,19 @@ func grabUrl(g *gocui.Gui) HttpResponse {
 		phracked.statusCh <- "Building UI\n"
 		phracked.countPages(g)
 		initSide(g)
-		phracked.ch <- HttpResponse{phracked.url, resp, err}
+		phracked.statusCh <- "done"
 	}(g)
 
 	for {
 		select {
 		case status := <-phracked.statusCh:
+      if status == "done" {
+        return
+      }
 			g.Execute(func(g *gocui.Gui) error {
 				updateStatus(g, status)
 				return nil
 			})
-		case r := <-phracked.ch:
-
-			return r
 		case <-time.After(1000 * time.Millisecond):
 			g.Execute(func(g *gocui.Gui) error {
 				updateStatus(g, ".")
