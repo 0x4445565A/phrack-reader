@@ -67,7 +67,7 @@ func (p *Phracked) initPhracked(issue string) {
 /**
  * Count the pages for the current Phrack issue.
  */
-func (p *Phracked) countPages(g *gocui.Gui) {
+func (p *Phracked) countPages() {
   files, err := ioutil.ReadDir(p.temp)
   if err != nil {
     log.Fatal(err)
@@ -139,7 +139,7 @@ func updateTitle(title string) {
 	mainView.Title = title
 }
 
-func updateStatus(g *gocui.Gui, status string) {
+func updateStatus(status string) {
 	statusView, err := g.View("status")
 	if err != nil {
 		panic(err)
@@ -405,7 +405,7 @@ func grabUrl() {
 		}
 		phracked.status <- "Issue unpacked\n"
 		phracked.status <- "Building UI\n"
-		phracked.countPages(g)
+		phracked.countPages()
 		initSide()
 		phracked.status <- "done"
 	}()
@@ -417,12 +417,12 @@ func grabUrl() {
         return
       }
 			g.Execute(func(g *gocui.Gui) error {
-				updateStatus(g, status)
+				updateStatus(status)
 				return nil
 			})
 		case <-time.After(1000 * time.Millisecond):
 			g.Execute(func(g *gocui.Gui) error {
-				updateStatus(g, ".")
+				updateStatus(".")
 				return nil
 			})
 		}
