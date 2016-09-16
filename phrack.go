@@ -244,6 +244,9 @@ func updateStatus(status string) {
 	}
 }
 
+/**
+ * Try to clean up on errors.
+ */
 func cleanFatal(v ...interface{}) {
   phracked.clean()
   log.Fatal(v...)
