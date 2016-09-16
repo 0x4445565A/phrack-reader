@@ -20,7 +20,7 @@ import (
 
 type Phracked struct {
   wg         sync.WaitGroup
-  statusCh   chan string
+  status     chan string
   issue      string
   url        string
   tempPrefix string
@@ -42,7 +42,7 @@ func (p *Phracked) cleanPhracked() {
 func (p *Phracked) initPhracked(issue string) {
 	p.cleanPhracked()
 	var err error
-	p.statusCh = make(chan string, 1)
+	p.status = make(chan string, 1)
 	p.issue = issue
 	p.url = "http://www.phrack.org/archives/tgz/phrack" + p.issue + ".tar.gz"
 	p.tempPrefix = "issue-" + p.issue + "-"
@@ -285,7 +285,7 @@ func keybindings(g *gocui.Gui) error {
 }
 
 func quit(g *gocui.Gui, v *gocui.View) error {
-	phracked.statusCh <- "done"
+	phracked.status <- "done"
 	return gocui.ErrQuit
 }
 
@@ -366,35 +366,35 @@ func grabUrl(g *gocui.Gui) {
 	clearStatus(g)
 	updateTitle(g, "Phrack Issue #" + phracked.issue)
 	go func(g *gocui.Gui) {
-		phracked.statusCh <- "Fetching " + phracked.url + "..."
+		phracked.status <- "Fetching " + phracked.url + "..."
 		resp, err := http.Get(phracked.url)
 		if err != nil {
 			phracked.cleanPhracked()
 			log.Fatal(err)
 		}
-		phracked.statusCh <- "\nDownload Complete...\n"
+		phracked.status <- "\nDownload Complete...\n"
 		_, err = io.Copy(phracked.tgz, resp.Body)
-		phracked.statusCh <- "Wrote to " + phracked.filePath + "\n"
+		phracked.status <- "Wrote to " + phracked.filePath + "\n"
 		if err != nil {
 			phracked.cleanPhracked()
 			log.Fatal(err)
 		}
-		phracked.statusCh <- "Unpacking tar.gz..."
+		phracked.status <- "Unpacking tar.gz..."
 		err = untar(phracked.filePath, phracked.temp)
 		if err != nil {
 			phracked.cleanPhracked()
 			log.Fatal(err)
 		}
-		phracked.statusCh <- "Issue unpacked\n"
-		phracked.statusCh <- "Building UI\n"
+		phracked.status <- "Issue unpacked\n"
+		phracked.status <- "Building UI\n"
 		phracked.countPages(g)
 		initSide(g)
-		phracked.statusCh <- "done"
+		phracked.status <- "done"
 	}(g)
 
 	for {
 		select {
-		case status := <-phracked.statusCh:
+		case status := <-phracked.status:
       if status == "done" {
         return
       }
