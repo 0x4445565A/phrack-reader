@@ -18,6 +18,9 @@ import (
 	"time"
 )
 
+/**
+ *  Primary structure for the Phrack Issue data.
+ */
 type Phracked struct {
   wg         sync.WaitGroup
   status     chan string
@@ -30,8 +33,14 @@ type Phracked struct {
   filePath   string
 }
 
+/**
+ *  Creating phracked struct in global scope for ease of access.
+ */
 var phracked = new(Phracked)
 
+/**
+ *  Make sure we clean up after ourselves.
+ */
 func (p *Phracked) cleanPhracked() {
 	if p.temp != "" {
 		p.tgz.Close()
@@ -39,6 +48,9 @@ func (p *Phracked) cleanPhracked() {
 	}
 }
 
+/**
+ *  Initialize all the data in the struct based on the issue number.
+ */
 func (p *Phracked) initPhracked(issue string) {
 	p.cleanPhracked()
 	var err error
@@ -57,6 +69,9 @@ func (p *Phracked) initPhracked(issue string) {
 	}
 }
 
+/**
+ * Count the pages for the current Phrack issue.
+ */
 func (p *Phracked) countPages(g *gocui.Gui) {
   files, err := ioutil.ReadDir(p.temp)
   if err != nil {
@@ -71,7 +86,9 @@ func (p *Phracked) countPages(g *gocui.Gui) {
 }
 
 
-
+/**
+ *  Figure out what issue to start with.
+ */
 func init() {
 	issue := "1"
 	if len(os.Args) > 1 {
