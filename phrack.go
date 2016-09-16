@@ -28,9 +28,10 @@ type Phracked struct {
   url        string
   tempPrefix string
   temp       string
-  pages int
+  pages      int
   tgz        *os.File
   filePath   string
+  response   *http.Response
 }
 
 /**
@@ -379,34 +380,51 @@ func updateMainFile(path string) {
 	}
 }
 
+func unpack() {
+    phracked.status <- "Unpacking tar.gz..."
+    err := untar(phracked.filePath, phracked.temp)
+    if err != nil {
+      phracked.cleanPhracked()
+      log.Fatal(err)
+    }
+    phracked.status <- "Issue unpacked\n"
+}
+
+func writeToFile() {
+    _, err := io.Copy(phracked.tgz, phracked.response.Body)
+    phracked.status <- "Wrote to " + phracked.filePath + "\n"
+    if err != nil {
+      phracked.cleanPhracked()
+      log.Fatal(err)
+    }
+}
+
+func fetchIssue() {
+  var err error
+  phracked.status <- "Fetching " + phracked.url + "..."
+  phracked.response, err = http.Get(phracked.url)
+  if err != nil {
+    phracked.cleanPhracked()
+    log.Fatal(err)
+  }
+  phracked.status <- "\nDownload Complete...\n"
+}
+
+func buildUI() {
+    phracked.status <- "Building UI\n"
+    phracked.countPages()
+    initSide()
+}
+
 func grabUrl() {
 	defer phracked.wg.Done()
 	clearStatus()
 	updateTitle("Phrack Issue #" + phracked.issue)
 	go func() {
-		phracked.status <- "Fetching " + phracked.url + "..."
-		resp, err := http.Get(phracked.url)
-		if err != nil {
-			phracked.cleanPhracked()
-			log.Fatal(err)
-		}
-		phracked.status <- "\nDownload Complete...\n"
-		_, err = io.Copy(phracked.tgz, resp.Body)
-		phracked.status <- "Wrote to " + phracked.filePath + "\n"
-		if err != nil {
-			phracked.cleanPhracked()
-			log.Fatal(err)
-		}
-		phracked.status <- "Unpacking tar.gz..."
-		err = untar(phracked.filePath, phracked.temp)
-		if err != nil {
-			phracked.cleanPhracked()
-			log.Fatal(err)
-		}
-		phracked.status <- "Issue unpacked\n"
-		phracked.status <- "Building UI\n"
-		phracked.countPages()
-		initSide()
+		fetchIssue()
+    writeToFile()
+    unpack()
+    buildUI()
 		phracked.status <- "done"
 	}()
 
