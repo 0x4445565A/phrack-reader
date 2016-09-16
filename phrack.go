@@ -56,12 +56,12 @@ func (p *Phracked) init(issue string) {
 	p.tempPrefix = "issue-" + p.issue + "-"
 	p.temp, err = ioutil.TempDir("", p.tempPrefix)
 	if err != nil {
-		log.Fatal(err)
+		cleanFatal(err)
 	}
 	p.filePath = p.temp + "/" + p.issue + ".tar.gz"
 	p.tgz, err = os.Create(p.filePath)
 	if err != nil {
-		log.Fatal(err)
+		cleanFatal(err)
 	}
 }
 
@@ -71,7 +71,7 @@ func (p *Phracked) init(issue string) {
 func (p *Phracked) countPages() {
 	files, err := ioutil.ReadDir(p.temp)
 	if err != nil {
-		log.Fatal(err)
+		cleanFatal(err)
 	}
 	p.pages = 0
 	for _, file := range files {
@@ -122,8 +122,7 @@ func (p *Phracked) unpack() {
 	p.status <- "Unpacking tar.gz..."
 	err := untar(p.filePath, p.temp)
 	if err != nil {
-		p.clean()
-		log.Fatal(err)
+		cleanFatal(err)
 	}
 	p.status <- "Issue unpacked\n"
 }
@@ -135,8 +134,7 @@ func (p *Phracked) writeToFile() {
 	_, err := io.Copy(p.tgz, p.response.Body)
 	p.status <- "Wrote to " + p.filePath + "\n"
 	if err != nil {
-		p.clean()
-		log.Fatal(err)
+		cleanFatal(err)
 	}
 }
 
@@ -148,8 +146,7 @@ func (p *Phracked) fetchIssue() {
 	p.status <- "Fetching " + p.url + "..."
 	p.response, err = http.Get(p.url)
 	if err != nil {
-		p.clean()
-		log.Fatal(err)
+		cleanFatal(err)
 	}
 	p.status <- "\nDownload Complete...\n"
 }
@@ -183,13 +180,13 @@ var g = gocui.NewGui()
 func main() {
 
 	if err := g.Init(); err != nil {
-		log.Panicln(err)
+		cleanFatal(err)
 	}
 	defer g.Close()
 
 	g.SetLayout(layout)
 	if err := keybindings(g); err != nil {
-		log.Panicln(err)
+		cleanFatal(err)
 	}
 
 	defer phracked.clean()
@@ -197,7 +194,7 @@ func main() {
 	go phracked.load()
 
 	if err := g.MainLoop(); err != nil && err != gocui.ErrQuit {
-		log.Panicln(err)
+		cleanFatal(err)
 	}
 
 	phracked.wg.Wait()
@@ -209,7 +206,7 @@ func main() {
 func clearStatus() {
 	statusView, err := g.View("status")
 	if err != nil {
-		panic(err)
+		cleanFatal(err)
 	}
 	statusView.Clear()
 	statusView.SetCursor(0, 0)
@@ -222,7 +219,7 @@ func clearStatus() {
 func updateTitle(title string) {
 	mainView, err := g.View("main")
 	if err != nil {
-		panic(err)
+		cleanFatal(err)
 	}
 	mainView.Title = title
 }
@@ -234,7 +231,7 @@ func updateTitle(title string) {
 func updateStatus(status string) {
 	statusView, err := g.View("status")
 	if err != nil {
-		panic(err)
+		cleanFatal(err)
 	}
 	fmt.Fprintf(statusView, "%s", status)
 	if strings.HasSuffix(status, "\n") {
@@ -245,6 +242,11 @@ func updateStatus(status string) {
 			statusView.SetOrigin(ox, oy+1)
 		}
 	}
+}
+
+func cleanFatal(v ...interface{}) {
+  phracked.clean()
+  log.Fatal(v...)
 }
 
 func layout(g *gocui.Gui) error {
@@ -346,7 +348,7 @@ func loadIssue(g *gocui.Gui, v *gocui.View) error {
 	vb := v.ViewBuffer()
 	reg, err := regexp.Compile("[^0-9]+")
 	if err != nil {
-		log.Fatal(err)
+		cleanFatal(err)
 	}
 	safer := reg.ReplaceAllString(vb, "")
 	if err := g.DeleteView("msg"); err != nil {
@@ -444,7 +446,7 @@ func untar(tarball, target string) error {
 func initSide() {
 	v, err := g.View("side")
 	if err != nil {
-		panic(err)
+		cleanFatal(err)
 	}
 	v.Clear()
 	fmt.Fprintf(v, "%s\n", "load")
@@ -461,7 +463,7 @@ func updateMainFile(path string) {
 	path = phracked.temp + "/" + path
 	mainView, err := g.View("main")
 	if err != nil {
-		panic(err)
+		cleanFatal(err)
 	}
 	b, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -473,7 +475,7 @@ func updateMainFile(path string) {
 		mainView.SetOrigin(0, 0)
 		fmt.Fprintf(mainView, "%s", b)
 		if err := g.SetCurrentView("main"); err != nil {
-			log.Fatal(err)
+			cleanFatal(err)
 		}
 	}
 }
