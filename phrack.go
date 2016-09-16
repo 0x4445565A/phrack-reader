@@ -82,23 +82,23 @@ func (p *Phracked) countPages() {
 }
 
 /**
- * Completely processes an issue.
+ * Completely loads and processes an issue.
  */
 func (p *Phracked) load() {
-  defer phracked.wg.Done()
+  defer p.wg.Done()
   clearStatus()
-  updateTitle("Phrack Issue #" + phracked.issue)
+  updateTitle("Phrack Issue #" + p.issue)
   go func() {
-    fetchIssue()
-    writeToFile()
-    unpack()
-    buildUI()
-    phracked.status <- "done"
+    p.fetchIssue()
+    p.writeToFile()
+    p.unpack()
+    p.buildUI()
+    p.status <- "done"
   }()
 
   for {
     select {
-    case status := <-phracked.status:
+    case status := <-p.status:
       if status == "done" {
         return
       }
@@ -115,6 +115,53 @@ func (p *Phracked) load() {
   }
 }
 
+/**
+ * Unpackes the phracked issue pushing status to channel.
+ */
+func (p *Phracked) unpack() {
+    p.status <- "Unpacking tar.gz..."
+    err := untar(p.filePath, p.temp)
+    if err != nil {
+      p.cleanPhracked()
+      log.Fatal(err)
+    }
+    p.status <- "Issue unpacked\n"
+}
+
+/**
+ * Writed the downloaded phracked issue pushing status to channel.
+ */
+func (p *Phracked) writeToFile() {
+    _, err := io.Copy(p.tgz, p.response.Body)
+    p.status <- "Wrote to " + p.filePath + "\n"
+    if err != nil {
+      p.cleanPhracked()
+      log.Fatal(err)
+    }
+}
+
+/**
+ * Fetches the phracked issue pushing status to channel.
+ */
+func (p *Phracked) fetchIssue() {
+  var err error
+  p.status <- "Fetching " + p.url + "..."
+  p.response, err = http.Get(p.url)
+  if err != nil {
+    p.cleanPhracked()
+    log.Fatal(err)
+  }
+  p.status <- "\nDownload Complete...\n"
+}
+
+/**
+ * Builds/updated the UI pushing status to channel.
+ */
+func (p *Phracked) buildUI() {
+    p.status <- "Building UI\n"
+    p.countPages()
+    initSide()
+}
 
 
 /**
@@ -430,52 +477,4 @@ func updateMainFile(path string) {
 			log.Fatal(err)
 		}
 	}
-}
-
-/**
- * Unpackes the phracked issue pushing status to channel.
- */
-func unpack() {
-    phracked.status <- "Unpacking tar.gz..."
-    err := untar(phracked.filePath, phracked.temp)
-    if err != nil {
-      phracked.cleanPhracked()
-      log.Fatal(err)
-    }
-    phracked.status <- "Issue unpacked\n"
-}
-
-/**
- * Writed the downloaded phracked issue pushing status to channel.
- */
-func writeToFile() {
-    _, err := io.Copy(phracked.tgz, phracked.response.Body)
-    phracked.status <- "Wrote to " + phracked.filePath + "\n"
-    if err != nil {
-      phracked.cleanPhracked()
-      log.Fatal(err)
-    }
-}
-
-/**
- * Fetches the phracked issue pushing status to channel.
- */
-func fetchIssue() {
-  var err error
-  phracked.status <- "Fetching " + phracked.url + "..."
-  phracked.response, err = http.Get(phracked.url)
-  if err != nil {
-    phracked.cleanPhracked()
-    log.Fatal(err)
-  }
-  phracked.status <- "\nDownload Complete...\n"
-}
-
-/**
- * Builds/updated the UI pushing status to channel.
- */
-func buildUI() {
-    phracked.status <- "Building UI\n"
-    phracked.countPages()
-    initSide()
 }
