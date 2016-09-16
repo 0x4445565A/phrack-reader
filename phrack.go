@@ -34,11 +34,6 @@ type Phracked struct {
 }
 
 /**
- *  Creating phracked struct in global scope for ease of access.
- */
-var phracked = new(Phracked)
-
-/**
  *  Make sure we clean up after ourselves.
  */
 func (p *Phracked) cleanPhracked() {
@@ -97,8 +92,14 @@ func init() {
 	phracked.initPhracked(issue)
 }
 
+/**
+ *  Creating in global scope for ease of access.
+ */
+var phracked = new(Phracked)
+var g = gocui.NewGui()
+
 func main() {
-	g := gocui.NewGui()
+	
 	if err := g.Init(); err != nil {
 		log.Panicln(err)
 	}
@@ -111,7 +112,7 @@ func main() {
 
 	defer phracked.cleanPhracked()
 	phracked.wg.Add(1)
-	go grabUrl(g)
+	go grabUrl()
 
 	if err := g.MainLoop(); err != nil && err != gocui.ErrQuit {
 		log.Panicln(err)
@@ -120,7 +121,7 @@ func main() {
 	phracked.wg.Wait()
 }
 
-func clearStatus(g *gocui.Gui) {
+func clearStatus() {
 	statusView, err := g.View("status")
 	if err != nil {
 		panic(err)
@@ -130,7 +131,7 @@ func clearStatus(g *gocui.Gui) {
 	statusView.SetOrigin(0, 0)
 }
 
-func updateTitle(g *gocui.Gui, title string) {
+func updateTitle(title string) {
 	mainView, err := g.View("main")
 	if err != nil {
 		panic(err)
@@ -243,7 +244,7 @@ func cursorSelect(g *gocui.Gui, v *gocui.View) error {
 			}
 			return nil
 		} else {
-			updateMainFile(g, l+".txt")
+			updateMainFile(l+".txt")
 		}
 
 	}
@@ -266,7 +267,7 @@ func loadIssue(g *gocui.Gui, v *gocui.View) error {
 	}
 	phracked.initPhracked(safer)
 	phracked.wg.Add(1)
-	go grabUrl(g)
+	go grabUrl()
 	return nil
 }
 
@@ -344,7 +345,7 @@ func untar(tarball, target string) error {
 	return nil
 }
 
-func initSide(g *gocui.Gui) {
+func initSide() {
 	v, err := g.View("side")
 	if err != nil {
 		panic(err)
@@ -354,10 +355,10 @@ func initSide(g *gocui.Gui) {
 	for i := 1; i <= phracked.pages; i++ {
 		fmt.Fprintf(v, "%s\n", strconv.Itoa(i))
 	}
-	updateMainFile(g, "1.txt")
+	updateMainFile("1.txt")
 }
 
-func updateMainFile(g *gocui.Gui, path string) {
+func updateMainFile(path string) {
 	path = phracked.temp + "/" + path
 	mainView, err := g.View("main")
 	if err != nil {
@@ -378,11 +379,11 @@ func updateMainFile(g *gocui.Gui, path string) {
 	}
 }
 
-func grabUrl(g *gocui.Gui) {
+func grabUrl() {
 	defer phracked.wg.Done()
-	clearStatus(g)
-	updateTitle(g, "Phrack Issue #" + phracked.issue)
-	go func(g *gocui.Gui) {
+	clearStatus()
+	updateTitle("Phrack Issue #" + phracked.issue)
+	go func() {
 		phracked.status <- "Fetching " + phracked.url + "..."
 		resp, err := http.Get(phracked.url)
 		if err != nil {
@@ -405,9 +406,9 @@ func grabUrl(g *gocui.Gui) {
 		phracked.status <- "Issue unpacked\n"
 		phracked.status <- "Building UI\n"
 		phracked.countPages(g)
-		initSide(g)
+		initSide()
 		phracked.status <- "done"
-	}(g)
+	}()
 
 	for {
 		select {
