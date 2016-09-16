@@ -37,7 +37,7 @@ type Phracked struct {
 /**
  *  Make sure we clean up after ourselves.
  */
-func (p *Phracked) cleanPhracked() {
+func (p *Phracked) clean() {
 	if p.temp != "" {
 		p.tgz.Close()
 		os.RemoveAll(p.temp)
@@ -47,8 +47,8 @@ func (p *Phracked) cleanPhracked() {
 /**
  *  Initialize all the data in the struct based on the issue number.
  */
-func (p *Phracked) initPhracked(issue string) {
-	p.cleanPhracked()
+func (p *Phracked) init(issue string) {
+	p.clean()
 	var err error
 	p.status = make(chan string, 1)
 	p.issue = issue
@@ -122,7 +122,7 @@ func (p *Phracked) unpack() {
 	p.status <- "Unpacking tar.gz..."
 	err := untar(p.filePath, p.temp)
 	if err != nil {
-		p.cleanPhracked()
+		p.clean()
 		log.Fatal(err)
 	}
 	p.status <- "Issue unpacked\n"
@@ -135,7 +135,7 @@ func (p *Phracked) writeToFile() {
 	_, err := io.Copy(p.tgz, p.response.Body)
 	p.status <- "Wrote to " + p.filePath + "\n"
 	if err != nil {
-		p.cleanPhracked()
+		p.clean()
 		log.Fatal(err)
 	}
 }
@@ -148,7 +148,7 @@ func (p *Phracked) fetchIssue() {
 	p.status <- "Fetching " + p.url + "..."
 	p.response, err = http.Get(p.url)
 	if err != nil {
-		p.cleanPhracked()
+		p.clean()
 		log.Fatal(err)
 	}
 	p.status <- "\nDownload Complete...\n"
@@ -171,7 +171,7 @@ func init() {
 	if len(os.Args) > 1 {
 		issue = os.Args[1]
 	}
-	phracked.initPhracked(issue)
+	phracked.init(issue)
 }
 
 /**
@@ -192,7 +192,7 @@ func main() {
 		log.Panicln(err)
 	}
 
-	defer phracked.cleanPhracked()
+	defer phracked.clean()
 	phracked.wg.Add(1)
 	go phracked.load()
 
@@ -355,7 +355,7 @@ func loadIssue(g *gocui.Gui, v *gocui.View) error {
 	if err := g.SetCurrentView("main"); err != nil {
 		return err
 	}
-	phracked.initPhracked(safer)
+	phracked.init(safer)
 	phracked.wg.Add(1)
 	go phracked.load()
 	return nil
