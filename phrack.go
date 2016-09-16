@@ -22,16 +22,16 @@ import (
  *  Primary structure for the Phrack Issue data.
  */
 type Phracked struct {
-  wg         sync.WaitGroup
-  status     chan string
-  issue      string
-  url        string
-  tempPrefix string
-  temp       string
-  pages      int
-  tgz        *os.File
-  filePath   string
-  response   *http.Response
+	wg         sync.WaitGroup
+	status     chan string
+	issue      string
+	url        string
+	tempPrefix string
+	temp       string
+	pages      int
+	tgz        *os.File
+	filePath   string
+	response   *http.Response
 }
 
 /**
@@ -69,100 +69,99 @@ func (p *Phracked) initPhracked(issue string) {
  * Count the pages for the current Phrack issue.
  */
 func (p *Phracked) countPages() {
-  files, err := ioutil.ReadDir(p.temp)
-  if err != nil {
-    log.Fatal(err)
-  }
-  p.pages = 0
-  for _, file := range files {
-    if strings.HasSuffix(file.Name(), ".txt") {
-      p.pages++
-    }
-  }
+	files, err := ioutil.ReadDir(p.temp)
+	if err != nil {
+		log.Fatal(err)
+	}
+	p.pages = 0
+	for _, file := range files {
+		if strings.HasSuffix(file.Name(), ".txt") {
+			p.pages++
+		}
+	}
 }
 
 /**
  * Completely loads and processes an issue.
  */
 func (p *Phracked) load() {
-  defer p.wg.Done()
-  clearStatus()
-  updateTitle("Phrack Issue #" + p.issue)
-  go func() {
-    p.fetchIssue()
-    p.writeToFile()
-    p.unpack()
-    p.buildUI()
-    p.status <- "done"
-  }()
+	defer p.wg.Done()
+	clearStatus()
+	updateTitle("Phrack Issue #" + p.issue)
+	go func() {
+		p.fetchIssue()
+		p.writeToFile()
+		p.unpack()
+		p.buildUI()
+		p.status <- "done"
+	}()
 
-  for {
-    select {
-    case status := <-p.status:
-      if status == "done" {
-        return
-      }
-      g.Execute(func(g *gocui.Gui) error {
-        updateStatus(status)
-        return nil
-      })
-    case <-time.After(1000 * time.Millisecond):
-      g.Execute(func(g *gocui.Gui) error {
-        updateStatus(".")
-        return nil
-      })
-    }
-  }
+	for {
+		select {
+		case status := <-p.status:
+			if status == "done" {
+				return
+			}
+			g.Execute(func(g *gocui.Gui) error {
+				updateStatus(status)
+				return nil
+			})
+		case <-time.After(1000 * time.Millisecond):
+			g.Execute(func(g *gocui.Gui) error {
+				updateStatus(".")
+				return nil
+			})
+		}
+	}
 }
 
 /**
  * Unpackes the phracked issue pushing status to channel.
  */
 func (p *Phracked) unpack() {
-    p.status <- "Unpacking tar.gz..."
-    err := untar(p.filePath, p.temp)
-    if err != nil {
-      p.cleanPhracked()
-      log.Fatal(err)
-    }
-    p.status <- "Issue unpacked\n"
+	p.status <- "Unpacking tar.gz..."
+	err := untar(p.filePath, p.temp)
+	if err != nil {
+		p.cleanPhracked()
+		log.Fatal(err)
+	}
+	p.status <- "Issue unpacked\n"
 }
 
 /**
  * Writed the downloaded phracked issue pushing status to channel.
  */
 func (p *Phracked) writeToFile() {
-    _, err := io.Copy(p.tgz, p.response.Body)
-    p.status <- "Wrote to " + p.filePath + "\n"
-    if err != nil {
-      p.cleanPhracked()
-      log.Fatal(err)
-    }
+	_, err := io.Copy(p.tgz, p.response.Body)
+	p.status <- "Wrote to " + p.filePath + "\n"
+	if err != nil {
+		p.cleanPhracked()
+		log.Fatal(err)
+	}
 }
 
 /**
  * Fetches the phracked issue pushing status to channel.
  */
 func (p *Phracked) fetchIssue() {
-  var err error
-  p.status <- "Fetching " + p.url + "..."
-  p.response, err = http.Get(p.url)
-  if err != nil {
-    p.cleanPhracked()
-    log.Fatal(err)
-  }
-  p.status <- "\nDownload Complete...\n"
+	var err error
+	p.status <- "Fetching " + p.url + "..."
+	p.response, err = http.Get(p.url)
+	if err != nil {
+		p.cleanPhracked()
+		log.Fatal(err)
+	}
+	p.status <- "\nDownload Complete...\n"
 }
 
 /**
  * Builds/updated the UI pushing status to channel.
  */
 func (p *Phracked) buildUI() {
-    p.status <- "Building UI\n"
-    p.countPages()
-    initSide()
+	p.status <- "Building UI\n"
+	p.countPages()
+	initSide()
 }
-
 
 /**
  *  Figure out what issue to start with.
@@ -182,7 +181,7 @@ var phracked = new(Phracked)
 var g = gocui.NewGui()
 
 func main() {
-	
+
 	if err := g.Init(); err != nil {
 		log.Panicln(err)
 	}
@@ -335,7 +334,7 @@ func cursorSelect(g *gocui.Gui, v *gocui.View) error {
 			}
 			return nil
 		} else {
-			updateMainFile(l+".txt")
+			updateMainFile(l + ".txt")
 		}
 
 	}
@@ -363,8 +362,8 @@ func loadIssue(g *gocui.Gui, v *gocui.View) error {
 }
 
 func quit(g *gocui.Gui, v *gocui.View) error {
-  phracked.status <- "done"
-  return gocui.ErrQuit
+	phracked.status <- "done"
+	return gocui.ErrQuit
 }
 
 func keybindings(g *gocui.Gui) error {
