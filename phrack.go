@@ -122,6 +122,9 @@ func main() {
 	phracked.wg.Wait()
 }
 
+/**
+ *  Clear the status view and result orgin/cursor.
+ */
 func clearStatus() {
 	statusView, err := g.View("status")
 	if err != nil {
@@ -132,6 +135,9 @@ func clearStatus() {
 	statusView.SetOrigin(0, 0)
 }
 
+/**
+ * Update the title of the main view.
+ */
 func updateTitle(title string) {
 	mainView, err := g.View("main")
 	if err != nil {
@@ -140,6 +146,10 @@ func updateTitle(title string) {
 	mainView.Title = title
 }
 
+/**
+ * Update the status view with more text.
+ * Adding new line increments the cursor.
+ */
 func updateStatus(status string) {
 	statusView, err := g.View("status")
 	if err != nil {
@@ -171,8 +181,6 @@ func layout(g *gocui.Gui) error {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
-		v.Title = "Phracked Issue #1"
-
 		v.Editable = false
 		v.Wrap = true
 		if err := g.SetCurrentView("main"); err != nil {
@@ -272,6 +280,11 @@ func loadIssue(g *gocui.Gui, v *gocui.View) error {
 	return nil
 }
 
+func quit(g *gocui.Gui, v *gocui.View) error {
+  phracked.status <- "done"
+  return gocui.ErrQuit
+}
+
 func keybindings(g *gocui.Gui) error {
 	if err := g.SetKeybinding("side", gocui.KeyTab, gocui.ModNone, nextView); err != nil {
 		return err
@@ -303,11 +316,9 @@ func keybindings(g *gocui.Gui) error {
 	return nil
 }
 
-func quit(g *gocui.Gui, v *gocui.View) error {
-	phracked.status <- "done"
-	return gocui.ErrQuit
-}
-
+/**
+ * untars a tarbell into target directory.
+ */
 func untar(tarball, target string) error {
 	reader, err := os.Open(tarball)
 	if err != nil {
@@ -346,6 +357,9 @@ func untar(tarball, target string) error {
 	return nil
 }
 
+/**
+ * Initializes the side view with the proper page count.
+ */
 func initSide() {
 	v, err := g.View("side")
 	if err != nil {
@@ -359,6 +373,9 @@ func initSide() {
 	updateMainFile("1.txt")
 }
 
+/**
+ * Updates the Main view with phracked file.
+ */
 func updateMainFile(path string) {
 	path = phracked.temp + "/" + path
 	mainView, err := g.View("main")
@@ -380,6 +397,9 @@ func updateMainFile(path string) {
 	}
 }
 
+/**
+ * Unpackes the phracked issue pushing status to channel.
+ */
 func unpack() {
     phracked.status <- "Unpacking tar.gz..."
     err := untar(phracked.filePath, phracked.temp)
@@ -390,6 +410,9 @@ func unpack() {
     phracked.status <- "Issue unpacked\n"
 }
 
+/**
+ * Writed the downloaded phracked issue pushing status to channel.
+ */
 func writeToFile() {
     _, err := io.Copy(phracked.tgz, phracked.response.Body)
     phracked.status <- "Wrote to " + phracked.filePath + "\n"
@@ -399,6 +422,9 @@ func writeToFile() {
     }
 }
 
+/**
+ * Fetches the phracked issue pushing status to channel.
+ */
 func fetchIssue() {
   var err error
   phracked.status <- "Fetching " + phracked.url + "..."
@@ -410,12 +436,18 @@ func fetchIssue() {
   phracked.status <- "\nDownload Complete...\n"
 }
 
+/**
+ * Builds/updated the UI pushing status to channel.
+ */
 func buildUI() {
     phracked.status <- "Building UI\n"
     phracked.countPages()
     initSide()
 }
 
+/**
+ * Completely processes an issue.
+ */
 func grabUrl() {
 	defer phracked.wg.Done()
 	clearStatus()
