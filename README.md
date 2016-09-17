@@ -1,14 +1,16 @@
 # phrack-reader
-A simple Go powered CLI reader for phrack zine
+A simple Go powered CLI reader for [Phrack Zine](http://phrack.org/).
+
+Powered by [GoCui](github.com/jroimartin/gocui)!
 
 # Installation
 go install github.com/0x4445565a/phrack-reader
 
 # Usage
 ```
-phrack
+phrack-reader
 # or (Where 20 is the issue you want to read)
-phrack 20
+phrack-reader 20
 ```
 
 # UI
