@@ -50,8 +50,16 @@ func (p *Phracked) clean() {
 func (p *Phracked) init(issue string) {
 	p.clean()
 	var err error
+	reg, err := regexp.Compile("[^0-9]+")
+	if err != nil {
+		cleanFatal(err)
+	}
+	safer := reg.ReplaceAllString(issue, "")
+	if safer == "" {
+		safer = "1"
+	}
 	p.status = make(chan string, 1)
-	p.issue = issue
+	p.issue = safer
 	p.url = "http://www.phrack.org/archives/tgz/phrack" + p.issue + ".tar.gz"
 	p.tempPrefix = "issue-" + p.issue + "-"
 	p.temp, err = ioutil.TempDir("", p.tempPrefix)
@@ -349,18 +357,13 @@ func cursorSelect(g *gocui.Gui, v *gocui.View) error {
 func loadIssue(g *gocui.Gui, v *gocui.View) error {
 	v.Rewind()
 	vb := v.ViewBuffer()
-	reg, err := regexp.Compile("[^0-9]+")
-	if err != nil {
-		cleanFatal(err)
-	}
-	safer := reg.ReplaceAllString(vb, "")
 	if err := g.DeleteView("msg"); err != nil {
 		return err
 	}
 	if err := g.SetCurrentView("main"); err != nil {
 		return err
 	}
-	phracked.init(safer)
+	phracked.init(vb)
 	phracked.wg.Add(1)
 	go phracked.load()
 	return nil
