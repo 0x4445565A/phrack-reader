@@ -127,7 +127,7 @@ func (p *Phracked) load() {
  * Unpackes the phracked issue pushing status to channel.
  */
 func (p *Phracked) unpack() {
-	p.status <- "Unpacking tar.gz..."
+	p.status <- "Unpacking tar.gz...\n"
 	err := untar(p.filePath, p.temp)
 	if err != nil {
 		cleanFatal(err)
